@@ -38,43 +38,6 @@ sudo anonymous-tunnel
 
 ---
 
-## Architecture & Decoupled Core
-
-The project decouples the **Go Networking Core Engine** from the **Bash Interactive Management Layer**:
-
-```
-+-------------------------------------------------------------+
-|                 Anonymous Tunnel Manager (Bash)             |
-|   - Interactive CLI Menu & One-Click Setup                  |
-|   - Systemd Service & Watchdog Generator                    |
-|   - Network Diagnostics, Speedtest & Ookla Benchmark        |
-|   - Let's Encrypt Automated Certificate Hooks               |
-|   - Telegram Bot with Remote Tunnel / Core Control          |
-+-------------------------------------------------------------+
-                               |
-               Downloads Pre-Compiled Binary
-                               v
-+-------------------------------------------------------------+
-|            Anonymous Tunnel Core (Go Engine)                |
-|   - Static CGO_ENABLED=0 Stripped ELF Binary                |
-|   - X25519 ECDH Key Exchange + AES-GCM Encryption           |
-|   - Multiplexed Stream Pools & Dynamic Port Forwarding       |
-|   - Real-time Rate Limiting & Live Stats Reporting          |
-+-------------------------------------------------------------+
-```
-
-### Supported Architectures
-
-Binaries are compiled and published automatically via GitHub Actions:
-
-- `linux-amd64` (Standard x86_64 VPS)
-- `linux-arm64` (ARM64 / aarch64, e.g. Oracle Cloud ARM, Apple Silicon VPS, Raspberry Pi 4/5)
-- `linux-armv7` (32-bit ARM v7)
-- `linux-armv6` (32-bit ARM v6)
-- `linux-386` (32-bit x86)
-
----
-
 ## Transports Supported
 
 1. **TCP**: Standard direct connection with TCP_NODELAY optimization.
@@ -91,7 +54,6 @@ Binaries are compiled and published automatically via GitHub Actions:
 
 ## Core Features
 
-- **Decoupled Multi-CDN Distribution**: No Go compiler or toolchain needed on target servers. Binaries and management scripts are distributed via high-speed jsDelivr Multi-CDN network (optimized for Iranian servers & restricted networks) and GitHub Releases with automatic mirror fallback (`ghproxy.net`).
 - **Telegram Bot Remote Control**: Manage, start, stop, restart, monitor bandwidth, inspect live logs, and update the core directly from Telegram.
 - **Auto-Refresh Watchdog**: Integrated systemd timer checking tunnel liveness every 30 seconds.
 - **Traffic & Bandwidth Quotas**: Real-time traffic meter with automatic suspension upon reaching GB quotas.
