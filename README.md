@@ -19,23 +19,11 @@ Optimized for restricted networks and bypasses GitHub throttling/censorship:
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/theneet0/anonymous-tunnel@main/install-cdn.sh)
 ```
 
-Or using `wget`:
-
-```bash
-bash <(wget -qO- https://cdn.jsdelivr.net/gh/theneet0/anonymous-tunnel@main/install-cdn.sh)
-```
-
 ### Option B: Direct GitHub Installation
 Direct download from GitHub repository with mirror fallback:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/theneet0/anonymous-tunnel/main/install.sh)
-```
-
-Or using `wget`:
-
-```bash
-bash <(wget -qO- https://raw.githubusercontent.com/theneet0/anonymous-tunnel/main/install.sh)
 ```
 
 ---
