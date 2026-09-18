@@ -12,7 +12,7 @@ High-performance, multiplexed, encrypted reverse tunneling solution designed for
 
 Choose the installation method suited for your server environment:
 
-### Option A: High-Speed CDN Installation (jsDelivr - Recommended for Iran servers)
+### Option A: Installation from jsDelivr CDN - (Recommended for Iran servers)
 Optimized for restricted networks and bypasses GitHub throttling/censorship:
 
 ```bash
