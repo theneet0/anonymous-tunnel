@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g. v2.3.0)'
+        required: false
+        default: 'v2.3.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Binary (${{ matrix.suffix }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            goarm: ''
+            suffix: linux-amd64
+          - goos: linux
+            goarch: arm64
+            goarm: ''
+            suffix: linux-arm64
+          - goos: linux
+            goarch: arm
+            goarm: '7'
+            suffix: linux-armv7
+          - goos: linux
+            goarch: arm
+            goarm: '6'
+            suffix: linux-armv6
+          - goos: linux
+            goarch: 386
+            goarm: ''
+            suffix: linux-386
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Build Core Binary
+        run: |
+          cd core
+          export CGO_ENABLED=0
+          export GOOS=${{ matrix.goos }}
+          export GOARCH=${{ matrix.goarch }}
+          if [ -n "${{ matrix.goarm }}" ]; then
+            export GOARM=${{ matrix.goarm }}
+          fi
+          go build -trimpath -ldflags="-s -w" -o ../anonymous-tunnel-core-${{ matrix.suffix }} main.go
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-${{ matrix.suffix }}
+          path: anonymous-tunnel-core-${{ matrix.suffix }}
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten and Calculate Checksums
+        run: |
+          mkdir -p release_assets
+          find artifacts/ -type f -name "anonymous-tunnel-core-*" -exec cp {} release_assets/ \;
+          cd release_assets
+          sha256sum * > sha256sums.txt
+          ls -la
+
+      - name: Determine Tag
+        id: get_tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            echo "TAG=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.TAG }}
+          name: Anonymous Tunnel Core ${{ steps.get_tag.outputs.TAG }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

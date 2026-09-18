@@ -1,0 +1,18 @@
+# Binaries and build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.tmp
+core/test_core_*
+core/core
+anonymous-tunnel-core-*
+artifacts/
+release_assets/
+
+# Runtime / config states
+*.log
+*.stats.json
+.tg_state.json
+.tg_notify_state
