@@ -10,7 +10,23 @@ High-performance, multiplexed, encrypted reverse tunneling solution designed for
 
 ## Quick Installation
 
-Run the one-liner installer on your Linux server (Ubuntu, Debian, CentOS, AlmaLinux, Rocky):
+Choose the installation method suited for your server environment:
+
+### Option A: High-Speed CDN Installation (jsDelivr - Recommended for Iran servers)
+Optimized for restricted networks and bypasses GitHub throttling/censorship:
+
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/theneet0/anonymous-tunnel@main/install-cdn.sh)
+```
+
+Or using `wget`:
+
+```bash
+bash <(wget -qO- https://cdn.jsdelivr.net/gh/theneet0/anonymous-tunnel@main/install-cdn.sh)
+```
+
+### Option B: Direct GitHub Installation
+Direct download from GitHub repository with mirror fallback:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/theneet0/anonymous-tunnel/main/install.sh)
@@ -21,6 +37,10 @@ Or using `wget`:
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/theneet0/anonymous-tunnel/main/install.sh)
 ```
+
+---
+
+### Launching the Manager
 
 Once installed, simply launch the manager anytime:
 
@@ -83,7 +103,7 @@ Binaries are compiled and published automatically via GitHub Actions:
 
 ## Core Features
 
-- **Decoupled Binary Distribution**: No Go compiler or toolchain needed on target servers. Binaries are fetched directly from GitHub Releases with automatic mirror fallback (`ghproxy.net`).
+- **Decoupled Multi-CDN Distribution**: No Go compiler or toolchain needed on target servers. Binaries and management scripts are distributed via high-speed jsDelivr Multi-CDN network (optimized for Iranian servers & restricted networks) and GitHub Releases with automatic mirror fallback (`ghproxy.net`).
 - **Telegram Bot Remote Control**: Manage, start, stop, restart, monitor bandwidth, inspect live logs, and update the core directly from Telegram.
 - **Auto-Refresh Watchdog**: Integrated systemd timer checking tunnel liveness every 30 seconds.
 - **Traffic & Bandwidth Quotas**: Real-time traffic meter with automatic suspension upon reaching GB quotas.

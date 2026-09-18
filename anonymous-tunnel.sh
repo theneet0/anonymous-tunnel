@@ -17,8 +17,24 @@ SERVICE_DIR="/etc/systemd/system"
 TG_CHANNEL="@anonymoustunnel"
 APP_VERSION="2.4"
 GITHUB_REPO="theneet0/anonymous-tunnel"
+BRANCH="main"
 RELEASE_BASE_URL="https://github.com/$GITHUB_REPO/releases/latest/download"
 MIRROR_BASE_URL="https://ghproxy.net/https://github.com/$GITHUB_REPO/releases/latest/download"
+CDN_BASE_URL="https://cdn.jsdelivr.net/gh/$GITHUB_REPO@$BRANCH/bin"
+CDN_FASTLY_URL="https://fastly.jsdelivr.net/gh/$GITHUB_REPO@$BRANCH/bin"
+CDN_GCORE_URL="https://gcore.jsdelivr.net/gh/$GITHUB_REPO@$BRANCH/bin"
+CDN_TESTINGCF_URL="https://testingcf.jsdelivr.net/gh/$GITHUB_REPO@$BRANCH/bin"
+SOURCE_CONF="$CONFIG_DIR/source.conf"
+
+get_active_source() {
+    local SRC="cdn"
+    if [ -f "$SOURCE_CONF" ]; then
+        local VAL
+        VAL=$(grep -oP '^DOWNLOAD_SOURCE="\K[^"]+' "$SOURCE_CONF" 2>/dev/null || true)
+        [ -n "$VAL" ] && SRC="$VAL"
+    fi
+    echo "$SRC"
+}
 
 mkdir -p "$CONFIG_DIR" "$CORE_DIR"
 
@@ -51,6 +67,13 @@ banner() {
         echo -e "${YELLOW}Core: ${GREEN}Installed${NC}"
     else
         echo -e "${YELLOW}Core: ${RED}Not Installed${NC}"
+    fi
+    local ACTIVE_SRC
+    ACTIVE_SRC=$(get_active_source)
+    if [ "$ACTIVE_SRC" == "cdn" ]; then
+        echo -e "${YELLOW}Source: ${GREEN}jsDelivr CDN${NC} ${CYAN}(Fast / Iran-Optimized)${NC}"
+    else
+        echo -e "${YELLOW}Source: ${BLUE}GitHub Releases${NC}"
     fi
     echo -e "${YELLOW}Telegram Channel: ${GREEN}${TG_CHANNEL}${NC}"
     echo -e "${CYAN}${BOLD}==============================================${NC}"
@@ -205,28 +228,51 @@ download_core() {
     fi
 
     local ASSET_NAME="anonymous-tunnel-core-${ARCH_SUFFIX}"
-    local PRIMARY_URL="${RELEASE_BASE_URL}/${ASSET_NAME}"
-    local FALLBACK_URL="${MIRROR_BASE_URL}/${ASSET_NAME}"
+    local PREFERRED_SOURCE
+    PREFERRED_SOURCE=$(get_active_source)
     local TMP_FILE="/tmp/${ASSET_NAME}.tmp"
-
     rm -f "$TMP_FILE"
-    echo -e "${BLUE}Target architecture: ${CYAN}${ARCH_SUFFIX}${NC}"
-    echo -e "${BLUE}Downloading core from GitHub Releases...${NC}"
 
-    if fetch_file "$PRIMARY_URL" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
-        echo -e "${GREEN}Downloaded directly from GitHub Releases.${NC}"
+    echo -e "${BLUE}Target architecture: ${CYAN}${ARCH_SUFFIX}${NC}"
+
+    local URL_LIST=()
+    if [ "$PREFERRED_SOURCE" == "cdn" ]; then
+        echo -e "${BLUE}Downloading core via ${GREEN}jsDelivr CDN${BLUE}...${NC}"
+        URL_LIST=(
+            "${CDN_BASE_URL}/${ASSET_NAME}"
+            "${CDN_FASTLY_URL}/${ASSET_NAME}"
+            "${CDN_GCORE_URL}/${ASSET_NAME}"
+            "${CDN_TESTINGCF_URL}/${ASSET_NAME}"
+            "${RELEASE_BASE_URL}/${ASSET_NAME}"
+            "${MIRROR_BASE_URL}/${ASSET_NAME}"
+        )
     else
-        echo -e "${YELLOW}Direct GitHub download failed or timed out. Trying mirror...${NC}"
-        if fetch_file "$FALLBACK_URL" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
-            echo -e "${GREEN}Downloaded successfully via mirror.${NC}"
+        echo -e "${BLUE}Downloading core from ${BLUE}GitHub Releases${BLUE}...${NC}"
+        URL_LIST=(
+            "${RELEASE_BASE_URL}/${ASSET_NAME}"
+            "${MIRROR_BASE_URL}/${ASSET_NAME}"
+            "${CDN_BASE_URL}/${ASSET_NAME}"
+            "${CDN_FASTLY_URL}/${ASSET_NAME}"
+            "${CDN_GCORE_URL}/${ASSET_NAME}"
+            "${CDN_TESTINGCF_URL}/${ASSET_NAME}"
+        )
+    fi
+
+    local SUCCESS=0
+    for u in "${URL_LIST[@]}"; do
+        if fetch_file "$u" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
+            echo -e "${GREEN}Downloaded successfully from: ${CYAN}${u%%/${ASSET_NAME}*}${NC}"
+            SUCCESS=1
+            break
         else
-            echo -e "${RED}Failed to download core from both GitHub and mirror.${NC}"
-            echo -e "${YELLOW}Checked URLs:${NC}"
-            echo "  $PRIMARY_URL"
-            echo "  $FALLBACK_URL"
-            rm -f "$TMP_FILE"
-            return 1
+            echo -e "${YELLOW}Download from ${u%%/${ASSET_NAME}*} failed, trying next mirror...${NC}"
         fi
+    done
+
+    if [ "$SUCCESS" -ne 1 ] || [ ! -s "$TMP_FILE" ]; then
+        echo -e "${RED}Failed to download core binary from all CDN nodes and GitHub mirrors.${NC}"
+        rm -f "$TMP_FILE"
+        return 1
     fi
 
     chmod +x "$TMP_FILE"
@@ -242,28 +288,75 @@ download_core_silent() {
     [ -z "$ARCH_SUFFIX" ] && return 1
 
     local ASSET_NAME="anonymous-tunnel-core-${ARCH_SUFFIX}"
-    local PRIMARY_URL="${RELEASE_BASE_URL}/${ASSET_NAME}"
-    local FALLBACK_URL="${MIRROR_BASE_URL}/${ASSET_NAME}"
+    local PREFERRED_SOURCE
+    PREFERRED_SOURCE=$(get_active_source)
     local TMP_FILE="/tmp/${ASSET_NAME}.tmp"
-
     rm -f "$TMP_FILE"
-    if fetch_file "$PRIMARY_URL" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
-        chmod +x "$TMP_FILE"
-        mv "$TMP_FILE" "$BIN_PATH"
-        return 0
+
+    local URL_LIST=()
+    if [ "$PREFERRED_SOURCE" == "cdn" ]; then
+        URL_LIST=(
+            "${CDN_BASE_URL}/${ASSET_NAME}"
+            "${CDN_FASTLY_URL}/${ASSET_NAME}"
+            "${CDN_GCORE_URL}/${ASSET_NAME}"
+            "${CDN_TESTINGCF_URL}/${ASSET_NAME}"
+            "${RELEASE_BASE_URL}/${ASSET_NAME}"
+            "${MIRROR_BASE_URL}/${ASSET_NAME}"
+        )
+    else
+        URL_LIST=(
+            "${RELEASE_BASE_URL}/${ASSET_NAME}"
+            "${MIRROR_BASE_URL}/${ASSET_NAME}"
+            "${CDN_BASE_URL}/${ASSET_NAME}"
+            "${CDN_FASTLY_URL}/${ASSET_NAME}"
+            "${CDN_GCORE_URL}/${ASSET_NAME}"
+            "${CDN_TESTINGCF_URL}/${ASSET_NAME}"
+        )
     fi
-    if fetch_file "$FALLBACK_URL" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
-        chmod +x "$TMP_FILE"
-        mv "$TMP_FILE" "$BIN_PATH"
-        return 0
-    fi
+
+    for u in "${URL_LIST[@]}"; do
+        if fetch_file "$u" "$TMP_FILE" && [ -s "$TMP_FILE" ]; then
+            chmod +x "$TMP_FILE"
+            mv "$TMP_FILE" "$BIN_PATH"
+            return 0
+        fi
+    done
     rm -f "$TMP_FILE"
     return 1
 }
 
 install_core() {
     banner
-    echo -e "${BLUE}Preparing Anonymous Tunnel Core...${NC}"
+    echo -e "${BLUE}Anonymous Tunnel Core Management${NC}"
+    local CUR_SRC
+    CUR_SRC=$(get_active_source)
+    echo -e "Current download source: ${CYAN}${CUR_SRC^^}${NC}"
+    echo ""
+    echo -e "${CYAN}1. Download / Update Core via jsDelivr CDN (Iran-Optimized)${NC}"
+    echo -e "${CYAN}2. Download / Update Core via GitHub Releases${NC}"
+    echo -e "${CYAN}3. Download / Update Core (Use Current Preference: ${CUR_SRC^^})${NC}"
+    echo -e "${RED}0. Back to Main Menu${NC}"
+    echo -e "${CYAN}${BOLD}==============================================${NC}"
+    read -p "$(echo -e ${YELLOW}Select an option [3]: ${NC})" SRC_CHOICE
+    SRC_CHOICE=${SRC_CHOICE:-3}
+
+    case "$SRC_CHOICE" in
+        1)
+            echo 'DOWNLOAD_SOURCE="cdn"' > "$SOURCE_CONF"
+            ;;
+        2)
+            echo 'DOWNLOAD_SOURCE="github"' > "$SOURCE_CONF"
+            ;;
+        3)
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    echo -e "${BLUE}Downloading Anonymous Tunnel Core...${NC}"
     if download_core; then
         echo -e "${GREEN}Anonymous Tunnel Core installed successfully.${NC}"
         local EXISTING
@@ -1093,7 +1186,7 @@ tg_handle_callback() {
             tg_edit "$chat_id" "$message_id" "$TXT" "$(tg_kb "$(tg_row "$(tg_btn "⬅️ Back" "m:main")")")"
             ;;
         core:update)
-            tg_edit "$chat_id" "$message_id" "🔄 Updating core from GitHub Releases..." ""
+            tg_edit "$chat_id" "$message_id" "🔄 Updating core binary (CDN / GitHub)..." ""
             if download_core_silent; then
                 for T in $(list_tunnels); do
                     systemctl restart "${APP_NAME}-$T" >/dev/null 2>&1

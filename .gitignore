@@ -7,9 +7,13 @@
 *.tmp
 core/test_core_*
 core/core
-anonymous-tunnel-core-*
+/anonymous-tunnel-core-*
 artifacts/
 release_assets/
+
+# Keep precompiled core binaries in bin/ for jsDelivr CDN distribution
+!/bin/
+!/bin/**
 
 # Runtime / config states
 *.log
